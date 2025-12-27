@@ -1,6 +1,4 @@
 import * as THREE from "three";
-import { FontLoader } from "three/examples/jsm/loaders/FontLoader.js";
-import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry.js";
 import GUI from "lil-gui";
 
 export class RingsModule {
@@ -32,46 +30,26 @@ export class RingsModule {
 
     window.addEventListener("keydown", this.handleKeyDown);
 
-    const fontLoader = new FontLoader();
-    fontLoader.load("/fonts/helvetiker_regular.typeface.json", (font) => {
-      if (this.isDisposed) return;
+    this.donutGeometry = new THREE.TorusGeometry(0.3, 0.18, 20, 45);
 
-      this.textGeometry = new TextGeometry("227", {
-        font,
-        size: 0.5,
-        depth: 0.2,
-        curveSegments: 5,
-        bevelEnabled: true,
-        bevelThickness: 0.03,
-        bevelSize: 0.02,
-        bevelOffset: 0,
-        bevelSegments: 4,
-      });
-      this.textGeometry.center();
+    for (let i = 0; i < 420; i++) {
+      const donut = new THREE.Mesh(this.donutGeometry, this.material);
 
-      this.textMesh = new THREE.Mesh(this.textGeometry, this.material);
-      this.group.add(this.textMesh);
+      // Wider depth field and softer lateral spread for a floating tunnel effect.
+      donut.position.x = (Math.random() - 0.5) * 12;
+      donut.position.y = (Math.random() - 0.5) * 9;
+      donut.position.z = (Math.random() - 0.5) * 18;
 
-      this.donutGeometry = new THREE.TorusGeometry(0.3, 0.2, 20, 45);
+      donut.rotation.x = Math.random() * Math.PI;
+      donut.rotation.y = Math.random() * Math.PI;
+      donut.rotation.z = Math.random() * Math.PI;
 
-      for (let i = 0; i < 300; i++) {
-        const donut = new THREE.Mesh(this.donutGeometry, this.material);
+      const scale = 0.35 + Math.random() * 1.05;
+      donut.scale.set(scale, scale, scale);
 
-        donut.position.x = (Math.random() - 0.5) * 10;
-        donut.position.y = (Math.random() - 0.5) * 10;
-        donut.position.z = (Math.random() - 0.5) * 10;
-
-        donut.rotation.x = Math.random() * Math.PI;
-        donut.rotation.y = Math.random() * Math.PI;
-        donut.rotation.z = Math.random() * Math.PI;
-
-        const scale = Math.random();
-        donut.scale.set(scale, scale, scale);
-
-        this.donuts.push(donut);
-        this.group.add(donut);
-      }
-    });
+      this.donuts.push(donut);
+      this.group.add(donut);
+    }
   }
 
   handleKeyDown(event) {
@@ -102,11 +80,6 @@ export class RingsModule {
     }
     this.axesHelper.dispose();
 
-    if (this.textMesh) {
-      this.group.remove(this.textMesh);
-      this.textMesh = null;
-    }
-
     for (const donut of this.donuts) {
       this.group.remove(donut);
     }
@@ -114,11 +87,6 @@ export class RingsModule {
 
     if (this.app && this.group.parent) {
       this.app.scene.remove(this.group);
-    }
-
-    if (this.textGeometry) {
-      this.textGeometry.dispose();
-      this.textGeometry = null;
     }
 
     if (this.donutGeometry) {
