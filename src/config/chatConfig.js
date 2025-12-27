@@ -9,5 +9,5 @@ export const chatConfig = {
   buffer: 1.0,
   viewportHeight: 3.8,
   scrollSpeed: 0.0025,
-  panelPosition: { x: 0, y: 0.2, z: -0.6 },
+  panelPosition: { x: 0, y: 0, z: 0.6 },
 };
