@@ -1,29 +1,10 @@
 import * as THREE from "three";
+import { Text } from "troika-three-text";
 
 const STATUS_COLORS = {
   sent: "#2f3338",
   sending: "#3a4b6a",
   failed: "#5a2a2a",
-};
-
-const wrapText = (ctx, text, maxWidth) => {
-  if (!text) return [""];
-  const words = text.split(/\s+/);
-  const lines = [];
-  let line = "";
-
-  for (const word of words) {
-    const next = line ? `${line} ${word}` : word;
-    if (ctx.measureText(next).width <= maxWidth || !line) {
-      line = next;
-    } else {
-      lines.push(line);
-      line = word;
-    }
-  }
-
-  if (line) lines.push(line);
-  return lines.length ? lines : [""];
 };
 
 export class MessageBubbleView {
@@ -45,20 +26,21 @@ export class MessageBubbleView {
     );
     this.group.add(this.backgroundMesh);
 
-    this.textCanvas = document.createElement("canvas");
-    this.textContext = this.textCanvas.getContext("2d");
-    this.textTexture = new THREE.CanvasTexture(this.textCanvas);
-    this.textMaterial = new THREE.MeshBasicMaterial({
-      map: this.textTexture,
-      transparent: true,
-      opacity: 0,
-    });
-    this.textMesh = new THREE.Mesh(
-      new THREE.PlaneGeometry(1, 1),
-      this.textMaterial
-    );
+    this.textMesh = new Text();
+    this.textMesh.fontSize = this.config.lineHeight;
+    this.textMesh.color = "#e8edf2";
+    this.textMesh.anchorY = "top";
+    this.textMesh.textAlign = "left";
     this.textMesh.position.z = 0.01;
     this.group.add(this.textMesh);
+
+    this.statusText = new Text();
+    this.statusText.fontSize = this.config.lineHeight * 0.7;
+    this.statusText.color = "rgba(232, 237, 242, 0.7)";
+    this.statusText.anchorY = "bottom";
+    this.statusText.textAlign = "left";
+    this.statusText.position.z = 0.01;
+    this.group.add(this.statusText);
 
     this.opacity = 0;
     this.scale = 0.9;
@@ -74,49 +56,38 @@ export class MessageBubbleView {
     this.group.position.set(item.x, item.y, 0);
     this.backgroundMesh.scale.set(item.w, item.h, 1);
 
-    this.textMesh.scale.set(item.w, item.h, 1);
+    const paddingX = this.config.bubblePaddingX;
+    const paddingY = this.config.bubblePaddingY;
+    const maxWidth = item.w - paddingX * 2;
 
-    const pixelsPerUnit = this.config.textPixelsPerUnit;
-    const widthPx = Math.max(1, Math.floor(item.w * pixelsPerUnit));
-    const heightPx = Math.max(1, Math.floor(item.h * pixelsPerUnit));
+    this.textMesh.text = item.text;
+    this.textMesh.maxWidth = Math.max(0.1, maxWidth);
+    this.textMesh.textAlign = item.side === "friend" ? "left" : "right";
+    this.textMesh.anchorX = item.side === "friend" ? "left" : "right";
+    this.textMesh.position.x =
+      item.side === "friend"
+        ? -item.w / 2 + paddingX
+        : item.w / 2 - paddingX;
+    this.textMesh.position.y = item.h / 2 - paddingY;
+    this.textMesh.sync();
 
-    if (this.textCanvas.width !== widthPx || this.textCanvas.height !== heightPx) {
-      this.textCanvas.width = widthPx;
-      this.textCanvas.height = heightPx;
-    }
-
-    const ctx = this.textContext;
-    ctx.clearRect(0, 0, widthPx, heightPx);
-    ctx.fillStyle = "rgba(0,0,0,0)";
-    ctx.fillRect(0, 0, widthPx, heightPx);
-
-    const paddingX = this.config.bubblePaddingX * pixelsPerUnit;
-    const paddingY = this.config.bubblePaddingY * pixelsPerUnit;
-    const fontSize = Math.max(10, this.config.lineHeight * pixelsPerUnit);
-    ctx.font = `${fontSize}px Arial`;
-    ctx.textBaseline = "top";
-    ctx.fillStyle = "#e8edf2";
-    ctx.textAlign = item.side === "friend" ? "left" : "right";
-
-    const maxWidth = widthPx - paddingX * 2;
-    const lines = wrapText(ctx, item.text, maxWidth);
-
-    let cursorY = paddingY;
-    for (const line of lines) {
-      const x = item.side === "friend" ? paddingX : widthPx - paddingX;
-      ctx.fillText(line, x, cursorY);
-      cursorY += fontSize;
-    }
-
-    if (item.status !== "sent") {
-      ctx.font = `${Math.max(9, fontSize * 0.7)}px Arial`;
-      ctx.fillStyle = "rgba(232, 237, 242, 0.7)";
-      const statusText = item.status === "sending" ? "sending..." : "failed";
-      const x = item.side === "friend" ? paddingX : widthPx - paddingX;
-      ctx.fillText(statusText, x, heightPx - paddingY - fontSize * 0.8);
-    }
-
-    this.textTexture.needsUpdate = true;
+    const statusText =
+      item.status === "sending"
+        ? "sending..."
+        : item.status === "failed"
+        ? "failed"
+        : "";
+    this.statusText.text = statusText;
+    this.statusText.visible = Boolean(statusText);
+    this.statusText.maxWidth = Math.max(0.1, maxWidth);
+    this.statusText.textAlign = item.side === "friend" ? "left" : "right";
+    this.statusText.anchorX = item.side === "friend" ? "left" : "right";
+    this.statusText.position.x =
+      item.side === "friend"
+        ? -item.w / 2 + paddingX
+        : item.w / 2 - paddingX;
+    this.statusText.position.y = -item.h / 2 + paddingY;
+    this.statusText.sync();
   }
 
   setStatus(status) {
@@ -138,15 +109,21 @@ export class MessageBubbleView {
     this.scale += (targetScale - this.scale) * scaleDelta;
 
     this.backgroundMaterial.opacity = this.opacity;
-    this.textMaterial.opacity = this.opacity;
+    if (this.textMesh.material) {
+      this.textMesh.material.transparent = true;
+      this.textMesh.material.opacity = this.opacity;
+    }
+    if (this.statusText.material) {
+      this.statusText.material.transparent = true;
+      this.statusText.material.opacity = this.opacity;
+    }
     this.group.scale.setScalar(this.scale);
   }
 
   dispose() {
     this.backgroundGeometry.dispose();
     this.backgroundMaterial.dispose();
-    this.textMesh.geometry.dispose();
-    this.textMaterial.dispose();
-    this.textTexture.dispose();
+    this.textMesh.dispose();
+    this.statusText.dispose();
   }
 }
