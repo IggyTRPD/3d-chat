@@ -1,5 +1,7 @@
 import { SceneApp } from "./scene/SceneApp.js";
 import { RingsModule } from "./modules/RingsModule.js";
+import { createChatStore } from "./chat/store.js";
+import { MockTransport } from "./chat/mockTransport.js";
 
 const canvas = document.querySelector("canvas.webgl");
 
@@ -7,8 +9,31 @@ const app = new SceneApp({ canvas });
 app.addModule(new RingsModule());
 app.start();
 
+const chatStore = createChatStore();
+const transport = new MockTransport();
+
+transport.onReceive = (text) => chatStore.receive(text);
+transport.onAck = (clientId, serverId, timestamp) =>
+  chatStore.ack(clientId, serverId, timestamp);
+transport.onFail = (clientId) => chatStore.fail(clientId);
+
+chatStore.subscribe((event, messages) => {
+  console.log(`[chat] ${event.type}`, event.message, "count", messages.length);
+});
+
+transport.start();
+
+if (import.meta.env.DEV) {
+  const demo = chatStore.send("Demo outgoing message...");
+  transport.send(demo.text, demo.clientId);
+}
+
+window.chatStore = chatStore;
+window.chatTransport = transport;
+
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
+    transport.stop();
     app.dispose();
   });
 }
