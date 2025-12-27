@@ -5,11 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build"
+    "build": "vite build",
+    "test": "vitest"
   },
   "devDependencies": {
     "vite": "^6.2.2",
-    "vite-plugin-restart": "^0.4.2"
+    "vite-plugin-restart": "^0.4.2",
+    "vitest": "^1.6.0"
   },
   "dependencies": {
     "lil-gui": "^0.20.0",
