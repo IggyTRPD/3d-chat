@@ -1,16 +1,18 @@
 import { SceneApp } from "./scene/SceneApp.js";
 import { RingsModule } from "./modules/RingsModule.js";
+import { ChatModule } from "./modules/ChatModule.js";
 import { createChatStore } from "./chat/store.js";
 import { MockTransport } from "./chat/mockTransport.js";
+
+const chatStore = createChatStore();
+const transport = new MockTransport();
 
 const canvas = document.querySelector("canvas.webgl");
 
 const app = new SceneApp({ canvas });
 app.addModule(new RingsModule());
+app.addModule(new ChatModule(chatStore));
 app.start();
-
-const chatStore = createChatStore();
-const transport = new MockTransport();
 
 transport.onReceive = (text) => chatStore.receive(text);
 transport.onAck = (clientId, serverId, timestamp) =>
