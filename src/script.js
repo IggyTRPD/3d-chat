@@ -3,6 +3,7 @@ import { RingsModule } from "./modules/RingsModule.js";
 import { ChatModule } from "./modules/ChatModule.js";
 import { createChatStore } from "./chat/store.js";
 import { MockTransport } from "./chat/mockTransport.js";
+import { TransportEvents } from "./chat/transport.js";
 import { createChatInput } from "./ui/chatInput.js";
 
 const chatStore = createChatStore();
@@ -17,10 +18,11 @@ app.addModule(ringsModule);
 app.addModule(new ChatModule(chatStore, undefined, { ringsModule }));
 app.start();
 
-transport.onReceive = (text) => chatStore.receive(text);
-transport.onAck = (clientId, serverId, timestamp) =>
-  chatStore.ack(clientId, serverId, timestamp);
-transport.onFail = (clientId) => chatStore.fail(clientId);
+transport.on(TransportEvents.receive, (text) => chatStore.receive(text));
+transport.on(TransportEvents.ack, (clientId, serverId, timestamp) =>
+  chatStore.ack(clientId, serverId, timestamp)
+);
+transport.on(TransportEvents.fail, (clientId) => chatStore.fail(clientId));
 
 chatStore.subscribe((event, messages) => {
   console.log(`[chat] ${event.type}`, event.message, "count", messages.length);

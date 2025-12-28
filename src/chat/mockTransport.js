@@ -1,3 +1,8 @@
+import { TransportEvents } from "./transport.js";
+
+/**
+ * Mock transport that simulates friend messages and async acks/failures.
+ */
 const FRIEND_MESSAGES = [
   "Hey! Can you see this?",
   "That's awesome! How does it look?",
@@ -14,19 +19,37 @@ export class MockTransport {
     this.failRate = failRate;
     this.friendIntervalId = null;
 
-    this.onReceive = null;
-    this.onAck = null;
-    this.onFail = null;
+    this.listeners = new Map();
+  }
+
+  on(event, handler) {
+    if (!this.listeners.has(event)) {
+      this.listeners.set(event, new Set());
+    }
+    this.listeners.get(event).add(handler);
+  }
+
+  off(event, handler) {
+    const set = this.listeners.get(event);
+    if (!set) return;
+    set.delete(handler);
+  }
+
+  emit(event, ...args) {
+    const set = this.listeners.get(event);
+    if (!set) return;
+    for (const handler of set) {
+      handler(...args);
+    }
   }
 
   start() {
     if (this.friendIntervalId) return;
 
     this.friendIntervalId = window.setInterval(() => {
-      if (!this.onReceive) return;
       const message =
         FRIEND_MESSAGES[Math.floor(Math.random() * FRIEND_MESSAGES.length)];
-      this.onReceive(message);
+      this.emit(TransportEvents.receive, message);
     }, 4200);
   }
 
@@ -44,18 +67,14 @@ export class MockTransport {
 
     window.setTimeout(() => {
       if (Math.random() < this.failRate) {
-        if (this.onFail) {
-          this.onFail(clientId);
-        }
+        this.emit(TransportEvents.fail, clientId);
         return;
       }
 
-      if (this.onAck) {
-        const serverId = `server-${Date.now()}-${Math.floor(
-          Math.random() * 1000
-        )}`;
-        this.onAck(clientId, serverId, Date.now());
-      }
+      const serverId = `server-${Date.now()}-${Math.floor(
+        Math.random() * 1000
+      )}`;
+      this.emit(TransportEvents.ack, clientId, serverId, Date.now());
     }, delay);
   }
 }
