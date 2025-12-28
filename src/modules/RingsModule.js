@@ -10,7 +10,6 @@ export class RingsModule {
     this.isDisposed = false;
     this.pulseStrength = 0;
     this.pulseTime = 0;
-
   }
 
   init(app) {
@@ -29,6 +28,7 @@ export class RingsModule {
     this.material.wireframe = false;
     this.material.transparent = true;
     this.material.opacity = 0.95;
+    this.material.flatShading = true;
 
     this.gui.add(this.material, "wireframe");
 

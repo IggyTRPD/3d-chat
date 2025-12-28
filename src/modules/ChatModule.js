@@ -83,6 +83,8 @@ export class ChatModule {
       this.needsLayout = true;
       if (event && event.type === "message:added") {
         this.triggerPulse();
+      } else if (event && event.type === "message:updated") {
+        this.chatBoard.updateStatus(event.message.id, event.message.status);
       }
     });
 

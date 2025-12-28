@@ -55,6 +55,13 @@ export class ChatBoard {
     }
   }
 
+  updateStatus(id, status) {
+    const view = this.views.get(id);
+    if (!view) return;
+    view.setStatus(status);
+    view.updateBackgroundTexture(status);
+  }
+
   dispose() {
     for (const view of this.views.values()) {
       this.group.remove(view.group);

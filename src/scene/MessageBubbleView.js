@@ -7,8 +7,8 @@ const STATUS_COLORS = {
 };
 
 const SIDE_COLORS = {
-  friend: "#1e2124ff",
-  me: "#6691bcff",
+  friend: "#1e2124",
+  me: "#6691bc",
 };
 
 export class MessageBubbleView {
@@ -120,12 +120,20 @@ export class MessageBubbleView {
   }
 
   setStatus(status) {
-    if (this.status === status) return;
+    const isSame = this.status === status;
     this.status = status;
-    if (status === "failed") {
+    if (this.item) {
+      this.item.status = status;
+    }
+    if (!isSame && status === "failed") {
       this.shakeTime = 0.5;
     }
-    this.updateBackgroundTexture();
+    const statusText =
+      status === "sending" ? "sending..." : status === "failed" ? "failed" : "";
+    this.statusText.text = statusText;
+    this.statusText.visible = Boolean(statusText);
+    this.statusText.sync();
+    this.updateBackgroundTexture(status);
   }
 
   setSelected(isSelected) {
@@ -144,7 +152,7 @@ export class MessageBubbleView {
     this.opacity += (targetOpacity - this.opacity) * opacityDelta;
     this.scale += (targetScale - this.scale) * scaleDelta;
 
-    this.backgroundMaterial.opacity = this.opacity;
+    this.backgroundMaterial.opacity = this.opacity * this.config.bubbleOpacity;
     if (this.textMesh.material) {
       this.textMesh.material.transparent = true;
       this.textMesh.material.opacity = this.opacity;
@@ -158,8 +166,10 @@ export class MessageBubbleView {
     if (this.shakeTime > 0) {
       this.shakeTime = Math.max(0, this.shakeTime - deltaTime);
       const intensity = (this.shakeTime / 0.5) * 0.04;
-      const offsetX = Math.sin(this.shakePhase + this.shakeTime * 40) * intensity;
-      const offsetY = Math.cos(this.shakePhase + this.shakeTime * 32) * intensity;
+      const offsetX =
+        Math.sin(this.shakePhase + this.shakeTime * 40) * intensity;
+      const offsetY =
+        Math.cos(this.shakePhase + this.shakeTime * 32) * intensity;
       this.group.position.set(
         this.basePosition.x + offsetX,
         this.basePosition.y + offsetY,
@@ -193,7 +203,7 @@ export class MessageBubbleView {
     }
   }
 
-  updateBackgroundTexture() {
+  updateBackgroundTexture(statusOverride) {
     const pixelsPerUnit = 220;
     const widthPx = Math.max(1, Math.floor(this.item.w * pixelsPerUnit));
     const heightPx = Math.max(1, Math.floor(this.item.h * pixelsPerUnit));
@@ -213,11 +223,12 @@ export class MessageBubbleView {
       widthPx / 2,
       heightPx / 2
     );
-    const baseColor = SIDE_COLORS[this.item.side] || SIDE_COLORS.friend;
-    const color = STATUS_COLORS[this.status] || baseColor;
+    const status = statusOverride || this.item.status || this.status;
+    const color = this.getStatusColor(status);
 
-    ctx.globalAlpha = this.config.bubbleOpacity;
-    ctx.fillStyle = color;
+    this.backgroundMaterial.color.set(color);
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = "#ffffff";
     ctx.beginPath();
     ctx.moveTo(radius, 0);
     ctx.lineTo(widthPx - radius, 0);
@@ -270,5 +281,10 @@ export class MessageBubbleView {
     }
 
     this.backgroundTexture.needsUpdate = true;
+  }
+
+  getStatusColor(status) {
+    const baseColor = SIDE_COLORS[this.item.side] || SIDE_COLORS.friend;
+    return STATUS_COLORS[status] || baseColor;
   }
 }
