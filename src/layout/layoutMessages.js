@@ -3,14 +3,34 @@ const clampMin = (value, min) => (value < min ? min : value);
 const estimateLineCount = (text, maxCharsPerLine) => {
   if (!text) return 1;
   const safeMax = clampMin(maxCharsPerLine, 1);
-  return Math.max(1, Math.ceil(text.length / safeMax));
+  const words = text.trim().split(/\s+/);
+  let lines = 1;
+  let lineLength = 0;
+
+  for (const word of words) {
+    const wordLength = word.length;
+    if (lineLength === 0) {
+      lineLength = wordLength;
+      continue;
+    }
+
+    if (lineLength + 1 + wordLength <= safeMax) {
+      lineLength += 1 + wordLength;
+    } else {
+      lines += 1;
+      lineLength = wordLength;
+    }
+  }
+
+  return Math.max(1, lines);
 };
 
 export const layoutMessages = (
   messages,
   config,
   scrollOffsetY,
-  viewportHeight
+  viewportHeight,
+  heightOverrides
 ) => {
   const {
     laneWidth,
@@ -23,6 +43,9 @@ export const layoutMessages = (
   } = config;
 
   const heights = messages.map((message) => {
+    if (heightOverrides && heightOverrides.has(message.id)) {
+      return heightOverrides.get(message.id);
+    }
     const lines = estimateLineCount(message.text, maxCharsPerLine);
     return bubblePaddingY * 2 + lines * lineHeight;
   });
@@ -35,8 +58,10 @@ export const layoutMessages = (
     }
   }
 
+  const bottomEdge = -viewportHeight / 2;
+  let cursorY = bottomEdge + totalHeight;
+
   const items = [];
-  let cursorY = totalHeight;
 
   for (let i = 0; i < messages.length; i++) {
     const message = messages[i];
@@ -44,7 +69,10 @@ export const layoutMessages = (
 
     cursorY -= height / 2;
     const contentY = cursorY;
-    cursorY -= height / 2 + itemSpacing;
+    cursorY -= height / 2;
+    if (i < messages.length - 1) {
+      cursorY -= itemSpacing;
+    }
 
     const x =
       message.side === "friend"

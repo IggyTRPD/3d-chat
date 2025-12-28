@@ -2,21 +2,31 @@ import * as THREE from "three";
 import { Text } from "troika-three-text";
 
 const STATUS_COLORS = {
-  sent: "#2f3338",
-  sending: "#3a4b6a",
+  sending: "#2f3953",
   failed: "#5a2a2a",
 };
 
+const SIDE_COLORS = {
+  friend: "#2f3338",
+  me: "#4a5f7c",
+};
+
 export class MessageBubbleView {
-  constructor(item, config) {
+  constructor(item, config, onMeasure) {
     this.item = item;
     this.config = config;
     this.status = item.status;
+    this.onMeasure = onMeasure;
     this.group = new THREE.Group();
+    this.measuredTextHeight = 0;
+    this.measuredStatusHeight = 0;
 
+    this.backgroundCanvas = document.createElement("canvas");
+    this.backgroundContext = this.backgroundCanvas.getContext("2d");
+    this.backgroundTexture = new THREE.CanvasTexture(this.backgroundCanvas);
     this.backgroundGeometry = new THREE.PlaneGeometry(1, 1);
     this.backgroundMaterial = new THREE.MeshBasicMaterial({
-      color: new THREE.Color(STATUS_COLORS[item.status] || STATUS_COLORS.sent),
+      map: this.backgroundTexture,
       transparent: true,
       opacity: 0,
     });
@@ -28,6 +38,7 @@ export class MessageBubbleView {
 
     this.textMesh = new Text();
     this.textMesh.fontSize = this.config.lineHeight;
+    this.textMesh.lineHeight = 1;
     this.textMesh.color = "#e8edf2";
     this.textMesh.anchorY = "top";
     this.textMesh.textAlign = "left";
@@ -36,6 +47,7 @@ export class MessageBubbleView {
 
     this.statusText = new Text();
     this.statusText.fontSize = this.config.lineHeight * 0.7;
+    this.statusText.lineHeight = 1;
     this.statusText.color = "rgba(232, 237, 242, 0.7)";
     this.statusText.anchorY = "bottom";
     this.statusText.textAlign = "left";
@@ -56,6 +68,8 @@ export class MessageBubbleView {
     this.group.position.set(item.x, item.y, 0);
     this.backgroundMesh.scale.set(item.w, item.h, 1);
 
+    this.updateBackgroundTexture();
+
     const paddingX = this.config.bubblePaddingX;
     const paddingY = this.config.bubblePaddingY;
     const maxWidth = item.w - paddingX * 2;
@@ -65,11 +79,15 @@ export class MessageBubbleView {
     this.textMesh.textAlign = item.side === "friend" ? "left" : "right";
     this.textMesh.anchorX = item.side === "friend" ? "left" : "right";
     this.textMesh.position.x =
-      item.side === "friend"
-        ? -item.w / 2 + paddingX
-        : item.w / 2 - paddingX;
+      item.side === "friend" ? -item.w / 2 + paddingX : item.w / 2 - paddingX;
     this.textMesh.position.y = item.h / 2 - paddingY;
-    this.textMesh.sync();
+    this.textMesh.sync(() => {
+      const info = this.textMesh.textRenderInfo;
+      if (info && info.blockBounds) {
+        this.measuredTextHeight = info.blockBounds[3] - info.blockBounds[1];
+        this.reportMeasuredHeight();
+      }
+    });
 
     const statusText =
       item.status === "sending"
@@ -83,19 +101,22 @@ export class MessageBubbleView {
     this.statusText.textAlign = item.side === "friend" ? "left" : "right";
     this.statusText.anchorX = item.side === "friend" ? "left" : "right";
     this.statusText.position.x =
-      item.side === "friend"
-        ? -item.w / 2 + paddingX
-        : item.w / 2 - paddingX;
+      item.side === "friend" ? -item.w / 2 + paddingX : item.w / 2 - paddingX;
     this.statusText.position.y = -item.h / 2 + paddingY;
-    this.statusText.sync();
+    this.statusText.sync(() => {
+      const info = this.statusText.textRenderInfo;
+      this.measuredStatusHeight =
+        info && info.blockBounds
+          ? info.blockBounds[3] - info.blockBounds[1]
+          : 0;
+      this.reportMeasuredHeight();
+    });
   }
 
   setStatus(status) {
     if (this.status === status) return;
     this.status = status;
-    this.backgroundMaterial.color.set(
-      STATUS_COLORS[status] || STATUS_COLORS.sent
-    );
+    this.updateBackgroundTexture();
   }
 
   update(deltaTime) {
@@ -123,7 +144,64 @@ export class MessageBubbleView {
   dispose() {
     this.backgroundGeometry.dispose();
     this.backgroundMaterial.dispose();
+    this.backgroundTexture.dispose();
     this.textMesh.dispose();
     this.statusText.dispose();
+  }
+
+  reportMeasuredHeight() {
+    if (!this.onMeasure) return;
+    const statusGap = this.statusText.text
+      ? this.config.bubblePaddingY * 0.6
+      : 0;
+    const measuredHeight =
+      this.measuredTextHeight +
+      this.measuredStatusHeight +
+      this.config.bubblePaddingY * 2 +
+      statusGap;
+    if (measuredHeight > 0) {
+      this.onMeasure(this.item.id, measuredHeight);
+    }
+  }
+
+  updateBackgroundTexture() {
+    const pixelsPerUnit = 220;
+    const widthPx = Math.max(1, Math.floor(this.item.w * pixelsPerUnit));
+    const heightPx = Math.max(1, Math.floor(this.item.h * pixelsPerUnit));
+    if (
+      this.backgroundCanvas.width !== widthPx ||
+      this.backgroundCanvas.height !== heightPx
+    ) {
+      this.backgroundCanvas.width = widthPx;
+      this.backgroundCanvas.height = heightPx;
+    }
+
+    const ctx = this.backgroundContext;
+    ctx.clearRect(0, 0, widthPx, heightPx);
+
+    const radius = Math.min(
+      this.config.bubbleRadius * pixelsPerUnit,
+      widthPx / 2,
+      heightPx / 2
+    );
+    const baseColor = SIDE_COLORS[this.item.side] || SIDE_COLORS.friend;
+    const color = STATUS_COLORS[this.status] || baseColor;
+
+    ctx.globalAlpha = this.config.bubbleOpacity;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.moveTo(radius, 0);
+    ctx.lineTo(widthPx - radius, 0);
+    ctx.quadraticCurveTo(widthPx, 0, widthPx, radius);
+    ctx.lineTo(widthPx, heightPx - radius);
+    ctx.quadraticCurveTo(widthPx, heightPx, widthPx - radius, heightPx);
+    ctx.lineTo(radius, heightPx);
+    ctx.quadraticCurveTo(0, heightPx, 0, heightPx - radius);
+    ctx.lineTo(0, radius);
+    ctx.quadraticCurveTo(0, 0, radius, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    this.backgroundTexture.needsUpdate = true;
   }
 }

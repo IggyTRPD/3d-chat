@@ -2,8 +2,9 @@ import * as THREE from "three";
 import { MessageBubbleView } from "./MessageBubbleView.js";
 
 export class ChatBoard {
-  constructor(config) {
+  constructor(config, onMeasure) {
     this.config = config;
+    this.onMeasure = onMeasure;
     this.group = new THREE.Group();
     this.views = new Map();
   }
@@ -27,7 +28,7 @@ export class ChatBoard {
         continue;
       }
 
-      const view = new MessageBubbleView(item, this.config);
+      const view = new MessageBubbleView(item, this.config, this.onMeasure);
       this.views.set(item.id, view);
       this.group.add(view.group);
     }

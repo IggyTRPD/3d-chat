@@ -10,6 +10,12 @@ export class SceneApp {
     this.isRunning = false;
     this.config = sceneConfig;
 
+    this.scene.fog = new THREE.Fog(
+      0x000000,
+      this.config.fogNear,
+      this.config.fogFar
+    );
+
     this.sizes = {
       width: window.innerWidth,
       height: window.innerHeight,

@@ -27,15 +27,17 @@ export class RingsModule {
       matcap: this.matcapTexture,
     });
     this.material.wireframe = false;
+    this.material.transparent = true;
+    this.material.opacity = 0.95;
 
     this.gui.add(this.material, "wireframe");
 
     window.addEventListener("keydown", this.handleKeyDown);
 
     this.donutGeometry = new THREE.TorusGeometry(0.3, 0.18, 20, 45);
-    const minRadius = 1.4;
+    const minRadius = 1.2;
 
-    for (let i = 0; i < 520; i++) {
+    for (let i = 0; i < 760; i++) {
       const donut = new THREE.Mesh(this.donutGeometry, this.material);
 
       // Spread rings around the chat volume, leaving a small center pocket.
@@ -46,9 +48,9 @@ export class RingsModule {
       let attempts = 0;
 
       while (radius < minRadius && attempts < 20) {
-        x = (Math.random() - 0.5) * 26;
-        y = (Math.random() - 0.5) * 16;
-        z = -(1.5 + Math.random() * 32);
+        x = (Math.random() - 0.5) * 34;
+        y = (Math.random() - 0.5) * 20;
+        z = -(1.5 + Math.random() * 40);
         radius = Math.sqrt(x * x + y * y + z * z);
         attempts += 1;
       }
@@ -59,7 +61,7 @@ export class RingsModule {
       donut.rotation.y = Math.random() * Math.PI;
       donut.rotation.z = Math.random() * Math.PI;
 
-      const scale = 0.35 + Math.random() * 1.05;
+      const scale = 0.25 + Math.random() * 1.1;
       donut.scale.set(scale, scale, scale);
 
       this.donuts.push(donut);
@@ -93,9 +95,9 @@ export class RingsModule {
   }
 
   update(deltaTime) {
-    const boundsX = 13;
-    const boundsY = 8;
-    const minZ = -34;
+    const boundsX = 17;
+    const boundsY = 10;
+    const minZ = -42;
     const maxZ = -1.2;
 
     for (let i = 0; i < this.donuts.length; i++) {

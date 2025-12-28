@@ -14,7 +14,7 @@ describe("layoutMessages", () => {
     };
     const messages = [
       { id: "1", side: "friend", text: "hello", status: "sent" },
-      { id: "2", side: "me", text: "0123456789012", status: "sent" },
+      { id: "2", side: "me", text: "0123456789 0123", status: "sent" },
     ];
 
     const items = layoutMessages(messages, config, 0, 100);
