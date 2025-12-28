@@ -3,7 +3,7 @@ const FRIEND_MESSAGES = [
   "That's awesome! How does it look?",
   "Got it. I'll send another message...",
   "Sure thing!",
-  "And here's another message to the left.",
+  "And here's another message to the left, but this one is a little bit longer in order to test the bubble behavior.",
   "Looks super cool!",
 ];
 

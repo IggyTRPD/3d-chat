@@ -3,9 +3,11 @@ import { RingsModule } from "./modules/RingsModule.js";
 import { ChatModule } from "./modules/ChatModule.js";
 import { createChatStore } from "./chat/store.js";
 import { MockTransport } from "./chat/mockTransport.js";
+import { createChatInput } from "./ui/chatInput.js";
 
 const chatStore = createChatStore();
 const transport = new MockTransport();
+const chatInput = createChatInput(chatStore, transport);
 
 const canvas = document.querySelector("canvas.webgl");
 
@@ -24,6 +26,7 @@ chatStore.subscribe((event, messages) => {
 });
 
 transport.start();
+chatInput.mount();
 
 if (import.meta.env.DEV) {
   const demo = chatStore.send("Demo outgoing message...");
@@ -35,6 +38,7 @@ window.chatTransport = transport;
 
 if (import.meta.hot) {
   import.meta.hot.dispose(() => {
+    chatInput.dispose();
     transport.stop();
     app.dispose();
   });

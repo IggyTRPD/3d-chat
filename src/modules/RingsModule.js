@@ -9,8 +9,6 @@ export class RingsModule {
     this.donutSpin = [];
     this.isDisposed = false;
 
-    this.axesHelper = new THREE.AxesHelper();
-    this.handleKeyDown = this.handleKeyDown.bind(this);
   }
 
   init(app) {
@@ -31,8 +29,6 @@ export class RingsModule {
     this.material.opacity = 0.95;
 
     this.gui.add(this.material, "wireframe");
-
-    window.addEventListener("keydown", this.handleKeyDown);
 
     this.donutGeometry = new THREE.TorusGeometry(0.3, 0.18, 20, 45);
     const minRadius = 1.2;
@@ -83,17 +79,6 @@ export class RingsModule {
     }
   }
 
-  handleKeyDown(event) {
-    if (event.key !== "a") return;
-
-    if (this.axesHelper.parent) {
-      this.app.scene.remove(this.axesHelper);
-      return;
-    }
-
-    this.app.scene.add(this.axesHelper);
-  }
-
   update(deltaTime) {
     const boundsX = 17;
     const boundsY = 10;
@@ -142,17 +127,10 @@ export class RingsModule {
   dispose() {
     this.isDisposed = true;
 
-    window.removeEventListener("keydown", this.handleKeyDown);
-
     if (this.gui) {
       this.gui.destroy();
       this.gui = null;
     }
-
-    if (this.axesHelper.parent) {
-      this.app.scene.remove(this.axesHelper);
-    }
-    this.axesHelper.dispose();
 
     for (const donut of this.donuts) {
       this.group.remove(donut);
