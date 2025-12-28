@@ -7,8 +7,8 @@ const STATUS_COLORS = {
 };
 
 const SIDE_COLORS = {
-  friend: "#2f3338",
-  me: "#4a5f7c",
+  friend: "#1e2124ff",
+  me: "#6691bcff",
 };
 
 export class MessageBubbleView {
