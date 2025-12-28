@@ -12,8 +12,9 @@ const chatInput = createChatInput(chatStore, transport);
 const canvas = document.querySelector("canvas.webgl");
 
 const app = new SceneApp({ canvas });
-app.addModule(new RingsModule());
-app.addModule(new ChatModule(chatStore));
+const ringsModule = new RingsModule();
+app.addModule(ringsModule);
+app.addModule(new ChatModule(chatStore, undefined, { ringsModule }));
 app.start();
 
 transport.onReceive = (text) => chatStore.receive(text);

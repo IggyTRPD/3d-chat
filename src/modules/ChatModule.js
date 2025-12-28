@@ -1,6 +1,7 @@
 import { layoutMessages } from "../layout/layoutMessages.js";
 import { chatConfig } from "../config/chatConfig.js";
 import { ChatBoard } from "../scene/ChatBoard.js";
+import * as THREE from "three";
 
 const estimateLineCount = (text, maxCharsPerLine) => {
   const safeMax = Math.max(1, maxCharsPerLine);
@@ -49,17 +50,22 @@ const estimateTotalHeight = (messages, config, heightOverrides) => {
 };
 
 export class ChatModule {
-  constructor(store, config = chatConfig) {
+  constructor(store, config = chatConfig, options = {}) {
     this.store = store;
     this.config = config;
+    this.ringsModule = options.ringsModule || null;
     this.scrollOffsetY = 0;
     this.needsLayout = true;
     this.heightOverrides = new Map();
     this.maxScroll = 0;
     this.stickToBottom = true;
+    this.pointer = new THREE.Vector2();
+    this.raycaster = new THREE.Raycaster();
+    this.selectedId = null;
 
     this.handleWheel = this.handleWheel.bind(this);
     this.handleMeasure = this.handleMeasure.bind(this);
+    this.handlePointerDown = this.handlePointerDown.bind(this);
   }
 
   init(app) {
@@ -72,12 +78,16 @@ export class ChatModule {
     );
     this.app.scene.add(this.chatBoard.group);
 
-    this.unsubscribe = this.store.subscribe(() => {
+    this.unsubscribe = this.store.subscribe((event) => {
       this.stickToBottom = this.scrollOffsetY <= 0.001;
       this.needsLayout = true;
+      if (event && event.type === "message:added") {
+        this.triggerPulse();
+      }
     });
 
     window.addEventListener("wheel", this.handleWheel, { passive: true });
+    window.addEventListener("pointerdown", this.handlePointerDown);
   }
 
   handleWheel(event) {
@@ -119,6 +129,7 @@ export class ChatModule {
 
   dispose() {
     window.removeEventListener("wheel", this.handleWheel);
+    window.removeEventListener("pointerdown", this.handlePointerDown);
     if (this.unsubscribe) {
       this.unsubscribe();
       this.unsubscribe = null;
@@ -136,6 +147,61 @@ export class ChatModule {
       this.heightOverrides.set(id, height);
       this.needsLayout = true;
     }
+  }
+
+  triggerPulse() {
+    if (this.ringsModule && this.ringsModule.triggerPulse) {
+      this.ringsModule.triggerPulse();
+    }
+  }
+
+  handlePointerDown(event) {
+    if (!this.app || !this.chatBoard) return;
+    const rect = this.app.renderer.domElement.getBoundingClientRect();
+    this.pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+    this.pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+
+    this.raycaster.setFromCamera(this.pointer, this.app.camera);
+    const meshes = [];
+    for (const view of this.chatBoard.views.values()) {
+      meshes.push(view.backgroundMesh);
+    }
+    const hits = this.raycaster.intersectObjects(meshes, false);
+    if (hits.length === 0) {
+      this.chatBoard.setSelected(null);
+      this.selectedId = null;
+      return;
+    }
+    const hit = hits[0];
+    const messageId = hit.object.userData.messageId;
+    if (!messageId) return;
+    this.selectedId = messageId;
+    this.chatBoard.setSelected(messageId);
+    const message = this.store
+      .getMessages()
+      .find((item) => item.id === messageId);
+    if (message && message.text) {
+      this.copyToClipboard(message.text);
+    }
+  }
+
+  copyToClipboard(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(() => {});
+      return;
+    }
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand("copy");
+    } catch (_) {
+      // Ignore copy failures.
+    }
+    textarea.remove();
   }
 
   updateScrollBounds() {

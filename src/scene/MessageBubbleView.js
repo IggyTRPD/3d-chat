@@ -20,6 +20,10 @@ export class MessageBubbleView {
     this.group = new THREE.Group();
     this.measuredTextHeight = 0;
     this.measuredStatusHeight = 0;
+    this.isSelected = false;
+    this.basePosition = new THREE.Vector3();
+    this.shakeTime = 0;
+    this.shakePhase = Math.random() * Math.PI * 2;
 
     this.backgroundCanvas = document.createElement("canvas");
     this.backgroundContext = this.backgroundCanvas.getContext("2d");
@@ -34,6 +38,7 @@ export class MessageBubbleView {
       this.backgroundGeometry,
       this.backgroundMaterial
     );
+    this.backgroundMesh.userData.messageId = item.id;
     this.group.add(this.backgroundMesh);
 
     this.textMesh = new Text();
@@ -65,7 +70,8 @@ export class MessageBubbleView {
   setLayout(item) {
     this.item = item;
 
-    this.group.position.set(item.x, item.y, 0);
+    this.basePosition.set(item.x, item.y, 0);
+    this.group.position.copy(this.basePosition);
     this.backgroundMesh.scale.set(item.w, item.h, 1);
 
     this.updateBackgroundTexture();
@@ -116,6 +122,15 @@ export class MessageBubbleView {
   setStatus(status) {
     if (this.status === status) return;
     this.status = status;
+    if (status === "failed") {
+      this.shakeTime = 0.5;
+    }
+    this.updateBackgroundTexture();
+  }
+
+  setSelected(isSelected) {
+    if (this.isSelected === isSelected) return;
+    this.isSelected = isSelected;
     this.updateBackgroundTexture();
   }
 
@@ -139,6 +154,20 @@ export class MessageBubbleView {
       this.statusText.material.opacity = this.opacity;
     }
     this.group.scale.setScalar(this.scale);
+
+    if (this.shakeTime > 0) {
+      this.shakeTime = Math.max(0, this.shakeTime - deltaTime);
+      const intensity = (this.shakeTime / 0.5) * 0.04;
+      const offsetX = Math.sin(this.shakePhase + this.shakeTime * 40) * intensity;
+      const offsetY = Math.cos(this.shakePhase + this.shakeTime * 32) * intensity;
+      this.group.position.set(
+        this.basePosition.x + offsetX,
+        this.basePosition.y + offsetY,
+        this.basePosition.z
+      );
+    } else {
+      this.group.position.copy(this.basePosition);
+    }
   }
 
   dispose() {
@@ -201,6 +230,44 @@ export class MessageBubbleView {
     ctx.quadraticCurveTo(0, 0, radius, 0);
     ctx.closePath();
     ctx.fill();
+
+    if (this.isSelected) {
+      ctx.globalAlpha = 1;
+      ctx.strokeStyle = "rgba(232, 237, 242, 0.7)";
+      ctx.lineWidth = Math.max(2, pixelsPerUnit * 0.01);
+      ctx.beginPath();
+      ctx.moveTo(radius, ctx.lineWidth / 2);
+      ctx.lineTo(widthPx - radius, ctx.lineWidth / 2);
+      ctx.quadraticCurveTo(
+        widthPx - ctx.lineWidth / 2,
+        ctx.lineWidth / 2,
+        widthPx - ctx.lineWidth / 2,
+        radius
+      );
+      ctx.lineTo(widthPx - ctx.lineWidth / 2, heightPx - radius);
+      ctx.quadraticCurveTo(
+        widthPx - ctx.lineWidth / 2,
+        heightPx - ctx.lineWidth / 2,
+        widthPx - radius,
+        heightPx - ctx.lineWidth / 2
+      );
+      ctx.lineTo(radius, heightPx - ctx.lineWidth / 2);
+      ctx.quadraticCurveTo(
+        ctx.lineWidth / 2,
+        heightPx - ctx.lineWidth / 2,
+        ctx.lineWidth / 2,
+        heightPx - radius
+      );
+      ctx.lineTo(ctx.lineWidth / 2, radius);
+      ctx.quadraticCurveTo(
+        ctx.lineWidth / 2,
+        ctx.lineWidth / 2,
+        radius,
+        ctx.lineWidth / 2
+      );
+      ctx.closePath();
+      ctx.stroke();
+    }
 
     this.backgroundTexture.needsUpdate = true;
   }

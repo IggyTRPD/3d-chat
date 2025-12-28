@@ -8,6 +8,8 @@ export class RingsModule {
     this.donutVelocities = [];
     this.donutSpin = [];
     this.isDisposed = false;
+    this.pulseStrength = 0;
+    this.pulseTime = 0;
 
   }
 
@@ -80,6 +82,14 @@ export class RingsModule {
   }
 
   update(deltaTime) {
+    this.pulseTime += deltaTime;
+    if (this.pulseStrength > 0) {
+      this.pulseStrength = Math.max(0, this.pulseStrength - deltaTime * 1.2);
+    }
+    const pulseScale =
+      1 + Math.sin(this.pulseTime * 6) * this.pulseStrength * 0.04;
+    this.group.scale.setScalar(pulseScale);
+
     const boundsX = 17;
     const boundsY = 10;
     const minZ = -42;
@@ -122,6 +132,10 @@ export class RingsModule {
         velocity.z *= -1;
       }
     }
+  }
+
+  triggerPulse() {
+    this.pulseStrength = 1;
   }
 
   dispose() {

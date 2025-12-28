@@ -7,6 +7,7 @@ export class ChatBoard {
     this.onMeasure = onMeasure;
     this.group = new THREE.Group();
     this.views = new Map();
+    this.selectId = null;
   }
 
   update(items) {
@@ -29,6 +30,7 @@ export class ChatBoard {
       }
 
       const view = new MessageBubbleView(item, this.config, this.onMeasure);
+      view.setSelected(item.id === this.selectId);
       this.views.set(item.id, view);
       this.group.add(view.group);
     }
@@ -37,6 +39,19 @@ export class ChatBoard {
   updateViews(deltaTime) {
     for (const view of this.views.values()) {
       view.update(deltaTime);
+    }
+  }
+
+  setSelected(id) {
+    if (this.selectId === id) return;
+    const prev = this.views.get(this.selectId);
+    if (prev) {
+      prev.setSelected(false);
+    }
+    this.selectId = id;
+    const next = this.views.get(id);
+    if (next) {
+      next.setSelected(true);
     }
   }
 
