@@ -41,6 +41,23 @@ export class MessageBubbleView {
     this.backgroundMesh.userData.messageId = item.id;
     this.group.add(this.backgroundMesh);
 
+    this.outlineCanvas = document.createElement("canvas");
+    this.outlineContext = this.outlineCanvas.getContext("2d");
+    this.outlineTexture = new THREE.CanvasTexture(this.outlineCanvas);
+    this.outlineMaterial = new THREE.MeshBasicMaterial({
+      map: this.outlineTexture,
+      transparent: true,
+      opacity: 0.8,
+      color: new THREE.Color("#ffffff"),
+    });
+    this.outlineMesh = new THREE.Mesh(
+      new THREE.PlaneGeometry(1, 1),
+      this.outlineMaterial
+    );
+    this.outlineMesh.visible = false;
+    this.outlineMesh.position.z = 0.02;
+    this.group.add(this.outlineMesh);
+
     this.textMesh = new Text();
     this.textMesh.fontSize = this.config.lineHeight;
     this.textMesh.lineHeight = 1;
@@ -73,8 +90,10 @@ export class MessageBubbleView {
     this.basePosition.set(item.x, item.y, 0);
     this.group.position.copy(this.basePosition);
     this.backgroundMesh.scale.set(item.w, item.h, 1);
+    this.outlineMesh.scale.set(item.w, item.h, 1);
 
     this.updateBackgroundTexture();
+    this.updateOutlineTexture();
 
     const paddingX = this.config.bubblePaddingX;
     const paddingY = this.config.bubblePaddingY;
@@ -139,7 +158,10 @@ export class MessageBubbleView {
   setSelected(isSelected) {
     if (this.isSelected === isSelected) return;
     this.isSelected = isSelected;
-    this.updateBackgroundTexture();
+    this.outlineMesh.visible = isSelected;
+    if (isSelected) {
+      this.updateOutlineTexture();
+    }
   }
 
   update(deltaTime) {
@@ -184,6 +206,9 @@ export class MessageBubbleView {
     this.backgroundGeometry.dispose();
     this.backgroundMaterial.dispose();
     this.backgroundTexture.dispose();
+    this.outlineMesh.geometry.dispose();
+    this.outlineMaterial.dispose();
+    this.outlineTexture.dispose();
     this.textMesh.dispose();
     this.statusText.dispose();
   }
@@ -242,45 +267,66 @@ export class MessageBubbleView {
     ctx.closePath();
     ctx.fill();
 
-    if (this.isSelected) {
-      ctx.globalAlpha = 1;
-      ctx.strokeStyle = "rgba(232, 237, 242, 0.7)";
-      ctx.lineWidth = Math.max(2, pixelsPerUnit * 0.01);
-      ctx.beginPath();
-      ctx.moveTo(radius, ctx.lineWidth / 2);
-      ctx.lineTo(widthPx - radius, ctx.lineWidth / 2);
-      ctx.quadraticCurveTo(
-        widthPx - ctx.lineWidth / 2,
-        ctx.lineWidth / 2,
-        widthPx - ctx.lineWidth / 2,
-        radius
-      );
-      ctx.lineTo(widthPx - ctx.lineWidth / 2, heightPx - radius);
-      ctx.quadraticCurveTo(
-        widthPx - ctx.lineWidth / 2,
-        heightPx - ctx.lineWidth / 2,
-        widthPx - radius,
-        heightPx - ctx.lineWidth / 2
-      );
-      ctx.lineTo(radius, heightPx - ctx.lineWidth / 2);
-      ctx.quadraticCurveTo(
-        ctx.lineWidth / 2,
-        heightPx - ctx.lineWidth / 2,
-        ctx.lineWidth / 2,
-        heightPx - radius
-      );
-      ctx.lineTo(ctx.lineWidth / 2, radius);
-      ctx.quadraticCurveTo(
-        ctx.lineWidth / 2,
-        ctx.lineWidth / 2,
-        radius,
-        ctx.lineWidth / 2
-      );
-      ctx.closePath();
-      ctx.stroke();
+    this.backgroundTexture.needsUpdate = true;
+  }
+
+  updateOutlineTexture() {
+    const pixelsPerUnit = 220;
+    const widthPx = Math.max(1, Math.floor(this.item.w * pixelsPerUnit));
+    const heightPx = Math.max(1, Math.floor(this.item.h * pixelsPerUnit));
+    if (
+      this.outlineCanvas.width !== widthPx ||
+      this.outlineCanvas.height !== heightPx
+    ) {
+      this.outlineCanvas.width = widthPx;
+      this.outlineCanvas.height = heightPx;
     }
 
-    this.backgroundTexture.needsUpdate = true;
+    const ctx = this.outlineContext;
+    ctx.clearRect(0, 0, widthPx, heightPx);
+
+    const radius = Math.min(
+      this.config.bubbleRadius * pixelsPerUnit,
+      widthPx / 2,
+      heightPx / 2
+    );
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = "#ffffff";
+    ctx.lineWidth = Math.max(2, pixelsPerUnit * 0.01);
+    ctx.beginPath();
+    ctx.moveTo(radius, ctx.lineWidth / 2);
+    ctx.lineTo(widthPx - radius, ctx.lineWidth / 2);
+    ctx.quadraticCurveTo(
+      widthPx - ctx.lineWidth / 2,
+      ctx.lineWidth / 2,
+      widthPx - ctx.lineWidth / 2,
+      radius
+    );
+    ctx.lineTo(widthPx - ctx.lineWidth / 2, heightPx - radius);
+    ctx.quadraticCurveTo(
+      widthPx - ctx.lineWidth / 2,
+      heightPx - ctx.lineWidth / 2,
+      widthPx - radius,
+      heightPx - ctx.lineWidth / 2
+    );
+    ctx.lineTo(radius, heightPx - ctx.lineWidth / 2);
+    ctx.quadraticCurveTo(
+      ctx.lineWidth / 2,
+      heightPx - ctx.lineWidth / 2,
+      ctx.lineWidth / 2,
+      heightPx - radius
+    );
+    ctx.lineTo(ctx.lineWidth / 2, radius);
+    ctx.quadraticCurveTo(
+      ctx.lineWidth / 2,
+      ctx.lineWidth / 2,
+      radius,
+      ctx.lineWidth / 2
+    );
+    ctx.closePath();
+    ctx.stroke();
+
+    this.outlineTexture.needsUpdate = true;
   }
 
   getStatusColor(status) {

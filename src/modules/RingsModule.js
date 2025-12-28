@@ -25,12 +25,23 @@ export class RingsModule {
     this.material = new THREE.MeshMatcapMaterial({
       matcap: this.matcapTexture,
     });
-    this.material.wireframe = false;
     this.material.transparent = true;
     this.material.opacity = 0.95;
     this.material.flatShading = true;
+    this.material.needsUpdate = true;
 
     this.gui.add(this.material, "wireframe");
+    this.gui.add(this.material, "flatShading").onChange(() => {
+      this.material.needsUpdate = true;
+    });
+
+    const background = { color: "#000000" };
+    this.gui.addColor(background, "color").onChange((value) => {
+      this.app.renderer.setClearColor(value, 1);
+      if (this.app.scene.fog) {
+        this.app.scene.fog.color.set(value);
+      }
+    });
 
     this.donutGeometry = new THREE.TorusGeometry(0.3, 0.18, 20, 45);
     const minRadius = 1.2;
