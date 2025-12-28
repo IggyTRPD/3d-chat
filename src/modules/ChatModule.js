@@ -144,6 +144,10 @@ export class ChatModule {
       this.config,
       this.heightOverrides
     );
-    this.maxScroll = Math.max(0, totalHeight - this.config.viewportHeight);
+    const effectiveHeight =
+      this.config.viewportHeight -
+      (this.config.viewportPaddingTop || 0) -
+      (this.config.viewportPaddingBottom || 0);
+    this.maxScroll = Math.max(0, totalHeight - effectiveHeight);
   }
 }

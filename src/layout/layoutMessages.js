@@ -40,6 +40,8 @@ export const layoutMessages = (
     maxCharsPerLine,
     itemSpacing,
     buffer = 0,
+    viewportPaddingTop = 0,
+    viewportPaddingBottom = 0,
   } = config;
 
   const heights = messages.map((message) => {
@@ -58,7 +60,7 @@ export const layoutMessages = (
     }
   }
 
-  const bottomEdge = -viewportHeight / 2;
+  const bottomEdge = -viewportHeight / 2 + viewportPaddingBottom;
   let cursorY = bottomEdge + totalHeight;
 
   const items = [];
@@ -83,7 +85,10 @@ export const layoutMessages = (
     const top = y + height / 2;
     const bottom = y - height / 2;
 
-    if (top < -buffer || bottom > viewportHeight + buffer) {
+    if (
+      top < -viewportHeight / 2 - buffer ||
+      bottom > viewportHeight / 2 + buffer
+    ) {
       continue;
     }
 

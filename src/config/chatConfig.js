@@ -10,6 +10,8 @@ export const chatConfig = {
   itemSpacing: 0.14,
   buffer: 1.0,
   viewportHeight: 4.8,
+  viewportPaddingTop: 0.18,
+  viewportPaddingBottom: 0.12,
   scrollSpeed: 0.0025,
   panelPosition: { x: 0, y: 0, z: 0.6 },
 };
